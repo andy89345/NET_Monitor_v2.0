@@ -8,6 +8,7 @@ import urllib.request as req
 import json
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
+import threading
 class cmd:
     def Cmd(ip):
         cmdstr1="ping -n 5 "
@@ -68,3 +69,10 @@ class get_vessel_list:
         get_list=nmss_beautiful.find_all("td")
         return get_list
 
+class Multithread_gogo:
+    def __init__(self,esn_array,vessel_array,lan2_ip_array,mng_ip_array):
+        self.esn_array=esn_array
+        self.vessel_array=vessel_array
+        self.lan2_ip_array=lan2_ip_array
+        self.mng_ip_array=mng_ip_array
+        
