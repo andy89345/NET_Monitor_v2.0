@@ -9,14 +9,19 @@ import json
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 import threading
+import requests
 class cmd:
     def Cmd(ip):
         cmdstr1="ping -n 5 "
         cmdstr2=cmdstr1+ip
         result = os.popen(cmdstr2)
         context = result.read()
-        print(context)
-        return context
+        print(context)  
+        if ("Min" in context) and ("specified" in context) and ("specified" in name):
+            online=1
+        else:
+            online=0
+        return online
 
 class initial:
     def Initial():
@@ -61,6 +66,13 @@ class web_crawer:
             url_beautiful_data=BeautifulSoup(url_html_read,"html.parser")
         return url_beautiful_data
 
+class get_json:
+    def get_json_data(url):
+       json_full=requests.get(url)
+       json_dump=json.dumps(json_full.text)
+       json_load=json.loads(json_dump)
+       return json_load
+
 
 class get_vessel_list:
     def NMSS(url):
@@ -69,6 +81,24 @@ class get_vessel_list:
         get_list=nmss_beautiful.find_all("td")
         return get_list
 
+    def DNCC(noc):
+        if noc=="TW":
+            input_url_noc="tw"
+        elif noc=="US":
+            input_url_noc="usa"
+        elif noc=="AU":
+            input_url_noc="au"
+        elif noc=="JP":
+            input_url_noc="jp"
+        
+        url_json=json.dumps(url.url_array)
+        real_url_json=json.loads(url_json)
+        normal_url=real_url_json["get_dncc_url"]
+        full_url=normal_url+input_url_noc
+        get_dncc_json=get_json.get_json_data(full_url)
+
+
+        return get_dncc_json
 class Multithread_gogo:
     def __init__(self,esn_array,vessel_array,lan2_ip_array,mng_ip_array):
         self.esn_array=esn_array

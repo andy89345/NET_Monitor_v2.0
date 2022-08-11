@@ -7,7 +7,8 @@ from NOC import NOC
 from account import login
 from url import url
 from pyfiglet import Figlet
-
+import threading
+import time
 while True:
     get_initial_data=initial.Initial()
     #print(get_initial_data)
@@ -43,6 +44,8 @@ while True:
         noc_array.append(td_array[pv0_noc])
     total_vessel_num=len(esn_array)
 
+
+
     print("-----------------------------")
     count=0
     for pv_esn,pv_vessel,pv_noc in zip(esn_array,vessel_array,noc_array):
@@ -53,5 +56,11 @@ while True:
             print(f"noc : {pv_noc}")
             print("---------------------------")
             count=count+1
+    get_json_from_dncc=get_vessel_list.DNCC(noc)
+    print(f"get json : {get_json_from_dncc}")
     print(f"total_vessel_num : {total_vessel_num}")
     print(f"in {noc} NOC num : {count}")
+    print("---------------------------------------------------")
+    print("SLEEP--->")
+    time.sleep(600)
+    
