@@ -26,38 +26,86 @@ while True:
     print("--------->>")
     nmss_data=get_vessel_list.NMSS(nms_url)
     td_array=[]
-    esn_array=[]
-    vessel_array=[]
-    noc_array=[]
+    nms_esn_array=[]
+    nms_vessel_array=[]
+    nms_noc_array=[]
     for td in nmss_data:
         td_clear=str(td.text).strip()
         #print(td_clear)
         td_array.append(td_clear)
 
     for pv0_esn in range(1,len(td_array)-1,5):
-        esn_array.append(td_array[pv0_esn])
+        nms_esn_array.append(td_array[pv0_esn])
 
     for pv0_vessel in range(2,len(td_array)-1,5):
-        vessel_array.append(td_array[pv0_vessel])
+        nms_vessel_array.append(td_array[pv0_vessel])
 
     for pv0_noc in range(3,len(td_array)-1,5):
-        noc_array.append(td_array[pv0_noc])
-    total_vessel_num=len(esn_array)
+        nms_noc_array.append(td_array[pv0_noc])
+    total_vessel_num=len(nms_esn_array)
 
 
 
     print("-----------------------------")
     count=0
-    for pv_esn,pv_vessel,pv_noc in zip(esn_array,vessel_array,noc_array):
-    
-        if str(pv_noc)==str(noc):
-            print(f"esn : {pv_esn}")
-            print(f"vessel : {pv_vessel}")
-            print(f"noc : {pv_noc}")
-            print("---------------------------")
-            count=count+1
     get_json_from_dncc=get_vessel_list.DNCC(noc)
     print(f"get json : {get_json_from_dncc}")
+    
+    noc_dncc_vessel_array=get_json_from_dncc[0]
+    noc_dncc_esn_array=get_json_from_dncc[1]
+    noc_dncc_noc_array=get_json_from_dncc[2]
+    noc_dncc_ip_array=get_json_from_dncc[3]
+
+    noc_nms_esn_array=[]
+    noc_nms_vessel_array=[]
+    noc_nms_noc_array=[]
+
+    for nms_esn,nms_vessel,nms_noc in zip(nms_esn_array,nms_vessel_array,nms_noc_array):
+    
+        if str(nms_noc)==str(noc):
+            #print(f"esn : {nms_esn}")
+            #print(f"vessel : {nms_vessel}")
+            #print(f"noc : {nms_noc}")
+            noc_nms_esn_array.append(nms_esn)
+            noc_nms_vessel_array.append(nms_vessel)
+            noc_nms_noc_array.append(nms_noc)
+            #print("---------------------------")
+            count=count+1
+    
+    final_vessel_array=[]
+    final_esn_array=[]
+    final_beam_array=[]
+    final_ip_array=[]
+
+    for nms_esn,nms_vessel,nms_noc in zip(noc_nms_esn_array,noc_nms_vessel_array,noc_nms_noc_array):
+        for dncc_esn,dncc_vessel,dncc_noc,dncc_ip in zip(noc_dncc_esn_array,noc_dncc_vessel_array,noc_dncc_noc_array,noc_dncc_ip_array):
+            if (nms_esn==dncc_esn) and (str(nms_noc) in str(dncc_noc)):
+                print(f"vessel : {nms_vessel}")
+                print(f"esn : {nms_esn}")
+                print(f"beam : {dncc_noc}")
+                print(f"lan2_ip : {dncc_ip}")
+                final_vessel_array.append(nms_vessel)
+                final_esn_array.append(nms_esn)
+                final_beam_array.append(dncc_noc)
+                final_ip_array.append(dncc_ip)
+                print("----------------------------")
+            elif (nms_esn==dncc_esn) and (str(nms_noc) not in str(dncc_noc)):
+                print(f"vessel : {nms_vessel}")
+                print(f"esn : {nms_esn}")
+                print(f"beam : {nms_noc}")
+                print(f"lan2_ip : {dncc_ip}")
+                final_vessel_array.append(nms_vessel)
+                final_esn_array.append(nms_esn)
+                final_beam_array.append(nms_noc)
+                final_ip_array.append(dncc_ip)
+                print("----------------------------")
+    thread_list=[]
+    for final_vessel,final_esn,final_beam,final_ip in zip(final_vessel_array,final_esn_array,final_beam_array,final_ip_array):
+        print(final_ip)
+        thread_list.append(threading.Thread(target=cmd.Cmd, args=(str(final_ip))))
+
+    for i in thread_list:
+        i.start()
     print(f"total_vessel_num : {total_vessel_num}")
     print(f"in {noc} NOC num : {count}")
     print("---------------------------------------------------")

@@ -10,6 +10,11 @@ from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 import threading
 import requests
+
+def split_list(array,n):
+    for i in range(0,len(array),n):
+        yield(array[i:i+n])
+
 class cmd:
     def Cmd(ip):
         cmdstr1="ping -n 5 "
@@ -82,6 +87,10 @@ class get_vessel_list:
         return get_list
 
     def DNCC(noc):
+        vessel_name_array=[]
+        vessel_esn_array=[]
+        vessel_beam_array=[]
+        vessel_lan2_array=[]
         if noc=="TW":
             input_url_noc="tw"
         elif noc=="US":
@@ -96,9 +105,35 @@ class get_vessel_list:
         normal_url=real_url_json["get_dncc_url"]
         full_url=normal_url+input_url_noc
         get_dncc_json=get_json.get_json_data(full_url)
+        get_dncc_json=get_dncc_json[2:len(get_dncc_json)-2]
+        split_get_dncc_json=str(get_dncc_json).split("},{")
+        for x in split_get_dncc_json:
+            #print(x)
+            spl_x=str(x).split(",")
+            #print(spl_x)
+            vessel_name_in_list=str(spl_x[0]).replace('"',"")
+            vessel_esn_in_list=str(spl_x[1])
+            vessel_beam_in_list=str(spl_x[2]).replace('"',"")
+            vessel_lan2_in_list=str(spl_x[3]).replace('"',"")
 
+            vessel_name_real=vessel_name_in_list.split(":")
+            vessel_name_final=vessel_name_real[1]
+            vessel_name_array.append(vessel_name_final)
 
-        return get_dncc_json
+            vessel_esn_real=vessel_esn_in_list.split(":")
+            vessel_esn_final=vessel_esn_real[1]
+            vessel_esn_array.append(vessel_esn_final)
+
+            vessel_beam_real=vessel_beam_in_list.split(":")
+            vessel_beam_final=vessel_beam_real[1]
+            vessel_beam_array.append(vessel_beam_final)
+
+            vessel_lan2_real=vessel_lan2_in_list.split(":")
+            vessel_lan2_final=vessel_lan2_real[1]
+            vessel_lan2_array.append(vessel_lan2_final)
+
+        result_array=[vessel_name_array,vessel_esn_array,vessel_beam_array,vessel_lan2_array]
+        return result_array
 class Multithread_gogo:
     def __init__(self,esn_array,vessel_array,lan2_ip_array,mng_ip_array):
         self.esn_array=esn_array
