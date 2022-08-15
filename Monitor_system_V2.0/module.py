@@ -1,6 +1,6 @@
 from NOC import NOC
 from account import login
-from url import url
+from url import url,hx200_url
 from pyfiglet import Figlet
 import datetime
 import time
@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 import threading
 import requests
-
+import os
+import pyodbc
 def split_list(array,n):
     for i in range(0,len(array),n):
         yield(array[i:i+n])
@@ -22,7 +23,7 @@ class cmd:
         result = os.popen(cmdstr2)
         context = result.read()
         print(context)  
-        if ("Min" in context) and ("specified" in context) and ("specified" in name):
+        if (("Min" in context) or ("最小值" in context)) and (("Average" in context) or ("平均" in context)):
             online=1
         else:
             online=0
@@ -43,7 +44,7 @@ class initial:
         print("Get NOC")
         NOC_dict=json.dumps(NOC.noc)
         NOC_json=json.loads(NOC_dict)
-        GET_NOC=NOC_json["TW"]  #Get the NOC
+        GET_NOC=NOC_json["AU"]  #Get the NOC
         #print(f"NOC : {GET_NOC}")
         #=================================================================================================
         print("Get total url")
@@ -66,6 +67,7 @@ class initial:
 class web_crawer:
     def beautiful_soup(url):
         url_html=req.Request(url,headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"})
+        print(url_html)
         with req.urlopen(url_html) as get_url_html:
             url_html_read=get_url_html.read()
             url_beautiful_data=BeautifulSoup(url_html_read,"html.parser")
@@ -134,10 +136,81 @@ class get_vessel_list:
 
         result_array=[vessel_name_array,vessel_esn_array,vessel_beam_array,vessel_lan2_array]
         return result_array
-class Multithread_gogo:
-    def __init__(self,esn_array,vessel_array,lan2_ip_array,mng_ip_array):
-        self.esn_array=esn_array
-        self.vessel_array=vessel_array
-        self.lan2_ip_array=lan2_ip_array
-        self.mng_ip_array=mng_ip_array
-        
+
+class hx200:
+    
+    def GetHx200_info(lan2ip,vessel,esn,beam):
+        print("-----------------------------------------------")
+        online_status=cmd.Cmd(lan2ip)
+        print(f"vessel : {vessel}")
+        if online_status==1:
+            try:
+                hx200_gps_url=hx200_url.hx200_gps_url(lan2ip)
+                hx200_sql_url=hx200_url.hx200_spf_url(lan2ip)
+                gps=requests.get(hx200_gps_url)
+                sqf=requests.get(hx200_sql_url)
+                if(gps.status_code==requests.codes.ok):
+                    gps_soup=BeautifulSoup(gps.text,"html.parser")
+                    total_data_gps=gps_soup.pre.text
+                    latitude="GPS latitude in radians"
+                    gps_data=total_data_gps[total_data_gps.index(latitude):]
+                    print("The GPS latitude in radians is:")
+                    print(gps_data[24:33])
+                    gps_lat=gps_data[24:33]
+                    gps_lat=str(gps_lat).strip()
+                    if "G" in str(gps_lat):
+                        spl_lat=gps_lat.split("G")
+                        gps_lat=spl_lat[0]
+                            
+                    longitude="GPS longitude in radians"
+                    gps_data2=total_data_gps[total_data_gps.index(longitude):]
+                    print("The GPS longitude in radians is:")
+                    print(gps_data2[25:35])
+                    gps_lon=gps_data2[25:35]
+                    gps_lon=str(gps_lon).strip()
+                    if "G" in str(gps_lon):
+                        spl_lon=gps_lon.split("G")
+                        gps_lon=spl_lon[0]
+                else:
+                    print("HX200 GPS connection lost")
+                    gps_lat="0.00"
+                    gps_lon="0.00"
+
+                if(sqf.status_code==requests.codes.ok):
+                    sqf_soup=BeautifulSoup(sqf.text,"html.parser")
+                    total_data_sqf=sqf_soup.find_all("pre")
+                    #print(total_data_sqf[1])
+                    total_data_sqf_x=total_data_sqf[1].text
+
+
+                    SQF="Signal Strength"
+                    sqf_data=total_data_sqf_x[total_data_sqf_x.index(SQF):]
+                    print("The SQF is:")
+                    print(sqf_data[30:32])
+                    sql_sqf=sqf_data[30:32]
+                    sql_sqf=str(sql_sqf)
+                    CAR="Carrier Info"
+                    car_data=total_data_sqf_x[total_data_sqf_x.index(CAR):]
+                    print("The carrier Info is")
+                    print(car_data[18:35])
+                    sql_car=car_data[18:35]
+                    sql_car=str(sql_car)
+
+
+                else:
+                    print("HX200 SQF connection lost")
+                    sql_sqf="0"
+                    sql_car="000.0:0:00000"
+                time_current=datetime.datetime.utcnow()
+                #time_current=str(time_current)
+                server = 'vesselstatusdb.database.windows.net' 
+                database = 'VesselStatusDB' 
+                username = 'lunghwa' 
+                password = 'LHE@debug' 
+                cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
+                cursor = cnxn.cursor()
+                cursor.execute("INSERT INTO dbo.Andy_test3 (ship_name,esn,gps_lat,gps_lon,sqf,carrierInfo,beam,time) VALUES(?,?,?,?,?,?,?,?)",vessel,esn,gps_lat,gps_lon,sql_sqf,sql_car,beam,time_current)
+                cursor.commit()
+            except Exception as e:
+                print(e)
+        print("--------------------------------------------------")

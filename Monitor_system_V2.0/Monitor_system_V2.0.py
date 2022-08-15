@@ -2,10 +2,10 @@ import requests
 import json
 import os
 import schedule
-from module import cmd,initial,web_crawer,get_vessel_list
+from module import cmd,initial,web_crawer,get_vessel_list,hx200
 from NOC import NOC
 from account import login
-from url import url
+from url import url,hx200_url
 from pyfiglet import Figlet
 import threading
 import time
@@ -101,14 +101,16 @@ while True:
                 print("----------------------------")
     thread_list=[]
     for final_vessel,final_esn,final_beam,final_ip in zip(final_vessel_array,final_esn_array,final_beam_array,final_ip_array):
+        #try:
         print(final_ip)
-        thread_list.append(threading.Thread(target=cmd.Cmd, args=(str(final_ip))))
-
+        thread_list.append(threading.Thread(target=hx200.GetHx200_info, args=(str(final_ip),str(final_vessel),str(final_esn),str(final_beam))))
+        #except Exception as e:
+            #print(e)
     for i in thread_list:
         i.start()
     print(f"total_vessel_num : {total_vessel_num}")
     print(f"in {noc} NOC num : {count}")
     print("---------------------------------------------------")
-    print("SLEEP--->")
+    print("Threading--->")
     time.sleep(600)
     
