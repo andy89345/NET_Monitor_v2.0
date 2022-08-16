@@ -12,6 +12,7 @@ import threading
 import requests
 import os
 import pyodbc
+#from fake_useragent import UserAgent
 def split_list(array,n):
     for i in range(0,len(array),n):
         yield(array[i:i+n])
@@ -136,26 +137,40 @@ class get_vessel_list:
 
         result_array=[vessel_name_array,vessel_esn_array,vessel_beam_array,vessel_lan2_array]
         return result_array
-
+#ua = UserAgent()
+#user_agent = ua.random
+#headers = {'user-agent': user_agent}
 class hx200:
     
-    def GetHx200_info(lan2ip,vessel,esn,beam):
-        print("-----------------------------------------------")
+    def GetHx200_info(lan2ip,vessel,esn,beam,online_status):
+        #print("-----------------------------------------------")
         online_status=cmd.Cmd(lan2ip)
-        print(f"vessel : {vessel}")
+        #print(f"vessel : {vessel}")
         if online_status==1:
             try:
+                print(f"vessel : {vessel} online!!!!")
                 hx200_gps_url=hx200_url.hx200_gps_url(lan2ip)
-                hx200_sql_url=hx200_url.hx200_spf_url(lan2ip)
-                gps=requests.get(hx200_gps_url)
-                sqf=requests.get(hx200_sql_url)
+                hx200_sqf_url=hx200_url.hx200_spf_url(lan2ip)
+                #headers={
+                #    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+                #    }
+                print(f"---------------------{hx200_gps_url}")
+                print(f"---------------------{hx200_sqf_url}")
+                gps=requests.get(hx200_gps_url,timeout=(60,60))
+                gps.close()
+                time.sleep(1)
+                sqf=requests.get(hx200_sqf_url,timeout=(60,60))
+                sqf.close()
+                time.sleep(1)
                 if(gps.status_code==requests.codes.ok):
                     gps_soup=BeautifulSoup(gps.text,"html.parser")
+                    #gps.close()
+                    #sqf.close()
                     total_data_gps=gps_soup.pre.text
                     latitude="GPS latitude in radians"
                     gps_data=total_data_gps[total_data_gps.index(latitude):]
-                    print("The GPS latitude in radians is:")
-                    print(gps_data[24:33])
+                    #print("The GPS latitude in radians is:")
+                    #print(gps_data[24:33])
                     gps_lat=gps_data[24:33]
                     gps_lat=str(gps_lat).strip()
                     if "G" in str(gps_lat):
@@ -164,20 +179,23 @@ class hx200:
                             
                     longitude="GPS longitude in radians"
                     gps_data2=total_data_gps[total_data_gps.index(longitude):]
-                    print("The GPS longitude in radians is:")
-                    print(gps_data2[25:35])
+                    #print("The GPS longitude in radians is:")
+                    #print(gps_data2[25:35])
                     gps_lon=gps_data2[25:35]
                     gps_lon=str(gps_lon).strip()
                     if "G" in str(gps_lon):
                         spl_lon=gps_lon.split("G")
                         gps_lon=spl_lon[0]
                 else:
-                    print("HX200 GPS connection lost")
+                    #gps.close()
+                    #sqf.close()
+                    #print("HX200 GPS connection lost")
                     gps_lat="0.00"
                     gps_lon="0.00"
 
                 if(sqf.status_code==requests.codes.ok):
                     sqf_soup=BeautifulSoup(sqf.text,"html.parser")
+                    #sqf.close()
                     total_data_sqf=sqf_soup.find_all("pre")
                     #print(total_data_sqf[1])
                     total_data_sqf_x=total_data_sqf[1].text
@@ -185,32 +203,76 @@ class hx200:
 
                     SQF="Signal Strength"
                     sqf_data=total_data_sqf_x[total_data_sqf_x.index(SQF):]
-                    print("The SQF is:")
-                    print(sqf_data[30:32])
+                    #print("The SQF is:")
+                    #print(sqf_data[30:32])
                     sql_sqf=sqf_data[30:32]
                     sql_sqf=str(sql_sqf)
                     CAR="Carrier Info"
                     car_data=total_data_sqf_x[total_data_sqf_x.index(CAR):]
-                    print("The carrier Info is")
-                    print(car_data[18:35])
+                    #print("The carrier Info is")
+                    #print(car_data[18:35])
                     sql_car=car_data[18:35]
                     sql_car=str(sql_car)
 
 
                 else:
-                    print("HX200 SQF connection lost")
+                    #sqf.close()
+                    #print("HX200 SQF connection lost")
                     sql_sqf="0"
                     sql_car="000.0:0:00000"
                 time_current=datetime.datetime.utcnow()
+                post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current,'lan2_ip':lan2ip,'CCTV_Active':online_status})
                 #time_current=str(time_current)
-                server = 'vesselstatusdb.database.windows.net' 
-                database = 'VesselStatusDB' 
-                username = 'lunghwa' 
-                password = 'LHE@debug' 
-                cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
-                cursor = cnxn.cursor()
-                cursor.execute("INSERT INTO dbo.Andy_test3 (ship_name,esn,gps_lat,gps_lon,sqf,carrierInfo,beam,time) VALUES(?,?,?,?,?,?,?,?)",vessel,esn,gps_lat,gps_lon,sql_sqf,sql_car,beam,time_current)
-                cursor.commit()
+                #server = 'vesselstatusdb.database.windows.net' 
+                #database = 'VesselStatusDB' 
+                #username = 'lunghwa' 
+                #password = 'LHE@debug' 
+                #cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
+                #cursor = cnxn.cursor()
+                #cursor.execute("INSERT INTO dbo.Andy_test3 (ship_name,esn,gps_lat,gps_lon,sqf,carrierInfo,beam,time) VALUES(?,?,?,?,?,?,?,?)",vessel,esn,gps_lat,gps_lon,sql_sqf,sql_car,beam,time_current)
+                #cursor.commit()
+                #cursor.close()
+                #cnxn.close()
             except Exception as e:
-                print(e)
+                print(f"{vessel}--------{e}")
+        #time.sleep(5)
         print("--------------------------------------------------")
+
+class videosoft:
+    def online_status(vessel):
+        video_url_dump=json.dumps(url.url_array)
+        video_url_load=json.loads(video_url_dump)
+        video_url=video_url_load["Videosoft_Bridge_url"]
+        video_user = 'videosoft'
+        video_password = 'Lung@hwa123'
+        user3_test=requests.get(video_url,timeout=(15,20),auth=HTTPBasicAuth(video_user, video_password))
+        if (user3_test.status_code == requests.codes.ok):   
+        #user3=req.Request(video_url,headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"})
+        #with req.urlopen(user3)  as video_read:
+        #    user_read=video_read.read()
+            video_soup=BeautifulSoup(user3_test.text,"html.parser")
+            find_data=video_soup.find_all("tr")
+            find_data2=str(vessel)
+            if name_read=="AMETHYST":
+                name_read="Amethyst"
+            if name_read in find_data2:
+                for i in find_data:
+                    total_data_video=str(i.text)
+                    data_spl=total_data_video.split("\n")
+                    if(len(data_spl)>=2):
+                        if name_read==data_spl[2]:
+                            video_active=data_spl[1]
+                            video_active=str(video_active)
+                            #print(total_data)
+                            #print("---------------------------------------")
+                            #print(f"the {name_read} CCTV_Active is : {video_active}")
+                            newTime=(datetime.datetime.utcnow()+datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+                            newTime2=newTime[:18]
+                            #print(data_spl[1])
+                            #print(data_spl[2])
+                            #print(data_spl[3])
+                        
+            else:
+                video_active="No data"
+                #print(f"the {name_read} CCTV_Active is : {video_active}")
+        return video_active

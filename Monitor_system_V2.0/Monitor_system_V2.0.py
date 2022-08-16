@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import schedule
-from module import cmd,initial,web_crawer,get_vessel_list,hx200
+from module import cmd,initial,web_crawer,get_vessel_list,hx200,videosoft
 from NOC import NOC
 from account import login
 from url import url,hx200_url
@@ -18,9 +18,9 @@ while True:
     dncc_url=get_initial_data[2]
     videosoft_url=get_initial_data[3]
     #------------------------------------
-    login_data=get_initial_data[4]
-    login_account=login_data[0]
-    login_password=login_data[1]
+    videosoft_login_data=get_initial_data[4]
+    videosoft_login_account=login_data[0]   
+    videosoft_login_password=login_data[1]
     #------------------------------------
     print("Initial done!!")
     print("--------->>")
@@ -99,18 +99,26 @@ while True:
                 final_beam_array.append(nms_noc)
                 final_ip_array.append(dncc_ip)
                 print("----------------------------")
+    vessel_online_status_array=[]
+    for video_vessel_name in final_vessel_array:
+        status=videosoft.online_status(video_vessel_name)
+        vessel_online_status_array.append(status)
     thread_list=[]
-    for final_vessel,final_esn,final_beam,final_ip in zip(final_vessel_array,final_esn_array,final_beam_array,final_ip_array):
+    for final_vessel,final_esn,final_beam,final_ip,videosoft_status in zip(final_vessel_array,final_esn_array,final_beam_array,final_ip_array,vessel_online_status_array):
         #try:
         print(final_ip)
-        thread_list.append(threading.Thread(target=hx200.GetHx200_info, args=(str(final_ip),str(final_vessel),str(final_esn),str(final_beam))))
+        t=threading.Thread(target=hx200.GetHx200_info, args=(str(final_ip),str(final_vessel),str(final_esn),str(final_beam),str(videosoft_status)))
+        thread_list.append(t)
+        t.start()
+        #t.join()
+        time.sleep(1)
         #except Exception as e:
             #print(e)
-    for i in thread_list:
-        i.start()
+    #for i in thread_list:
+     #   i.join()
     print(f"total_vessel_num : {total_vessel_num}")
     print(f"in {noc} NOC num : {count}")
     print("---------------------------------------------------")
     print("Threading--->")
-    time.sleep(600)
+    time.sleep(120)
     
