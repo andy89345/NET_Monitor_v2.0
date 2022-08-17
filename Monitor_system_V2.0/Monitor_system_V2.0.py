@@ -19,8 +19,8 @@ while True:
     videosoft_url=get_initial_data[3]
     #------------------------------------
     videosoft_login_data=get_initial_data[4]
-    videosoft_login_account=login_data[0]   
-    videosoft_login_password=login_data[1]
+    videosoft_login_account=videosoft_login_data[0]   
+    videosoft_login_password=videosoft_login_data[1]
     #------------------------------------
     print("Initial done!!")
     print("--------->>")
@@ -120,5 +120,5 @@ while True:
     print(f"in {noc} NOC num : {count}")
     print("---------------------------------------------------")
     print("Threading--->")
-    time.sleep(120)
+    time.sleep(550)
     

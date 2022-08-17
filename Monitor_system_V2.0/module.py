@@ -45,7 +45,11 @@ class initial:
         print("Get NOC")
         NOC_dict=json.dumps(NOC.noc)
         NOC_json=json.loads(NOC_dict)
-        GET_NOC=NOC_json["AU"]  #Get the NOC
+        open_noc_txt=open("select_noc.txt","r")
+        read_noc=open_noc_txt.readline().strip()
+        read_noc_upper=read_noc.upper()
+        open_noc_txt.close()
+        GET_NOC=NOC_json[read_noc_upper]  #Get the NOC
         #print(f"NOC : {GET_NOC}")
         #=================================================================================================
         print("Get total url")
@@ -142,7 +146,7 @@ class get_vessel_list:
 #headers = {'user-agent': user_agent}
 class hx200:
     
-    def GetHx200_info(lan2ip,vessel,esn,beam,online_status):
+    def GetHx200_info(lan2ip,vessel,esn,beam,videosoft_online_status):
         #print("-----------------------------------------------")
         online_status=cmd.Cmd(lan2ip)
         #print(f"vessel : {vessel}")
@@ -206,13 +210,13 @@ class hx200:
                     #print("The SQF is:")
                     #print(sqf_data[30:32])
                     sql_sqf=sqf_data[30:32]
-                    sql_sqf=str(sql_sqf)
+                    sql_sqf=str(sql_sqf).strip()
                     CAR="Carrier Info"
                     car_data=total_data_sqf_x[total_data_sqf_x.index(CAR):]
                     #print("The carrier Info is")
                     #print(car_data[18:35])
                     sql_car=car_data[18:35]
-                    sql_car=str(sql_car)
+                    sql_car=str(sql_car).strip()
 
 
                 else:
@@ -221,7 +225,14 @@ class hx200:
                     sql_sqf="0"
                     sql_car="000.0:0:00000"
                 time_current=datetime.datetime.utcnow()
-                post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current,'lan2_ip':lan2ip,'CCTV_Active':online_status})
+                time_current_str=str(time_current)
+                time_current_spl=time_current_str.split(".")
+                time_current_clear=str(time_current_spl[0])
+                time_current_final=datetime.datetime.strptime(time_current_clear, "%Y-%m-%d %H:%M:%S")
+                
+                
+                print(f"{vessel},{esn},{sql_sqf},{gps_lat},{gps_lon},{beam},{sql_car},{time_current_final},{lan2ip},{videosoft_online_status}")
+                #post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current,'lan2_ip':lan2ip,'CCTV_Active':videosoft_online_status})
                 #time_current=str(time_current)
                 #server = 'vesselstatusdb.database.windows.net' 
                 #database = 'VesselStatusDB' 
@@ -252,22 +263,22 @@ class videosoft:
         #    user_read=video_read.read()
             video_soup=BeautifulSoup(user3_test.text,"html.parser")
             find_data=video_soup.find_all("tr")
-            find_data2=str(vessel)
-            if name_read=="AMETHYST":
-                name_read="Amethyst"
-            if name_read in find_data2:
+            find_data2=str(find_data)
+            if vessel=="AMETHYST":
+                vessel="Amethyst"
+            if vessel in find_data2:
                 for i in find_data:
                     total_data_video=str(i.text)
                     data_spl=total_data_video.split("\n")
                     if(len(data_spl)>=2):
-                        if name_read==data_spl[2]:
+                        if vessel==data_spl[2]:
                             video_active=data_spl[1]
                             video_active=str(video_active)
                             #print(total_data)
                             #print("---------------------------------------")
-                            #print(f"the {name_read} CCTV_Active is : {video_active}")
-                            newTime=(datetime.datetime.utcnow()+datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
-                            newTime2=newTime[:18]
+                            #print(f"the {vessel} CCTV_Active is : {video_active}")
+                            #newTime=(datetime.datetime.utcnow()+datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+                            #newTime2=newTime[:18]
                             #print(data_spl[1])
                             #print(data_spl[2])
                             #print(data_spl[3])
