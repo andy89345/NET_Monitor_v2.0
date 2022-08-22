@@ -12,6 +12,8 @@ import threading
 import requests
 import os
 import pyodbc
+import math
+from math import radians,cos,sin,asin,sqrt,degrees
 #from fake_useragent import UserAgent
 def split_list(array,n):
     for i in range(0,len(array),n):
@@ -29,6 +31,75 @@ class cmd:
         else:
             online=0
         return online
+
+
+class satellite_count:
+    def __init__(self, vessel_lat,vessel_lon,satellite_lat,satellite_lon):
+        self.vessel_lat=float(vessel_lat)
+        self.vessel_lon=float(vessel_lon)
+        self.satellite_lat=float(satellite_lat)
+        self.satellite_lon=float(satellite_lon)
+
+    def satellite_el(self):
+        up=cos(radians(self.satellite_lon-self.vessel_lon))*cos(radians(self.vessel_lat))-0.15
+        down=(1-(((cos(radians(self.satellite_lon-self.vessel_lon)))*cos(radians(self.vessel_lat))))**2)**0.5
+        if down!=0:
+            data=up/down
+        else:
+            data=0
+        if data!=0:
+            ans=degrees(math.atan(data))
+        else:
+            ans=degrees(math.atan(data))+90
+   
+        return round(ans,3)
+
+    def satellite_AZ(self):
+
+        up=math.tan(radians(self.satellite_lon-self.vessel_lon))
+        down=math.sin(radians(self.vessel_lat))
+        if down!=0:
+            data=up/down
+        else:
+            data=0
+        if ((self.satellite_lat-self.vessel_lat)>0) and ((self.satellite_lon-self.vessel_lon)>0):
+            print("Satellite in I")
+            ans=-degrees(math.atan(data))
+        elif((self.satellite_lat-self.vessel_lat)>0) and ((self.satellite_lon-self.vessel_lon)<0):
+            print("Satellite in II")
+            ans=-degrees(math.atan(data))+360
+        elif((self.satellite_lat-self.vessel_lat)<0) and ((self.satellite_lon-self.vessel_lon)<0):
+            print("Satellite in III")
+            ans=-degrees(math.atan(data))+180   
+        elif((self.satellite_lat-self.vessel_lat)<0) and ((self.satellite_lon-self.vessel_lon)>0):
+            print("Satellite in IV")
+            ans=-degrees(math.atan(data))+180
+        elif((self.satellite_lat-self.vessel_lat)==0) and ((self.satellite_lon-self.vessel_lon)>0):
+            print("Satellite in east")
+            ans=degrees(math.atan(data))+270
+        elif((self.satellite_lat-self.vessel_lat)==0) and ((self.satellite_lon-self.vessel_lon)<0):
+            print("Satellite in west")
+            ans=degrees(math.atan(data))+90
+        elif((self.satellite_lat-self.vessel_lat)>0) and ((self.satellite_lon-self.vessel_lon)==0):
+            print("Satellite in north")
+            ans=degrees(math.atan(data))
+        elif((self.satellite_lat-self.vessel_lat)<0) and ((self.satellite_lon-self.vessel_lon)==0):
+            print("Satellite in south")
+            ans=degrees(math.atan(data))+180
+        else:
+            print("Satellite in Vessel position")
+            ans=degrees(math.atan(data))
+        return round(ans,3)
+
+    def satellite_PA(self):
+        up=sin(radians(self.satellite_lon-self.vessel_lon))
+        down=math.tan(radians(self.vessel_lat))
+        if down!=0:
+            data=up-down
+        else:
+            data=0
+        ans=degrees(math.atan(data))
+        return round(ans,3)
 
 class initial:
     def Initial():
@@ -229,9 +300,25 @@ class hx200:
                 time_current_spl=time_current_str.split(".")
                 time_current_clear=str(time_current_spl[0])
                 time_current_final=datetime.datetime.strptime(time_current_clear, "%Y-%m-%d %H:%M:%S")
+                if sql_car!="000.0:0:00000":
+                    car_spl=str(sql_car).split(".")
+                    sat_lat="0"
+                    sat_lon=car_spl[0]
+                    satellite_counter=satellite_count(gps_lat,gps_lon,sat_lat,sat_lon)
+                    satellite_EL=satellite_counter.satellite_el()
+                    satellite_AZ=satellite_counter.satellite_AZ()
+                    satellite_PA=satellite_counter.satellite_PA()
+                else:
+                    satellite_EL="0.0"
+                    satellite_AZ="0.0"
+                    satellite_PA="0.0"
+
+
+
+
+
                 
-                
-                print(f"{vessel},{esn},{sql_sqf},{gps_lat},{gps_lon},{beam},{sql_car},{time_current_final},{lan2ip},{videosoft_online_status}")
+                print(f"{vessel},{esn},{sql_sqf},{gps_lat},{gps_lon},{beam},{sql_car},{time_current_final},{lan2ip},{videosoft_online_status},{satellite_EL},{satellite_AZ},{satellite_PA}")
                 #post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current,'lan2_ip':lan2ip,'CCTV_Active':videosoft_online_status})
                 #time_current=str(time_current)
                 #server = 'vesselstatusdb.database.windows.net' 
