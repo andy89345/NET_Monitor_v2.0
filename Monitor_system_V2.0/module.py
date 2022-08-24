@@ -1,6 +1,6 @@
 from NOC import NOC
 from account import login
-from url import url,hx200_url
+from url import url,hx200_url,mng_ip
 from pyfiglet import Figlet
 import datetime
 import time
@@ -216,25 +216,56 @@ class get_vessel_list:
 #user_agent = ua.random
 #headers = {'user-agent': user_agent}
 class hx200:
-    
+    def get_mng_ip_function(mng_url):
+        get_hx200_json=requests.get(mng_url)
+        if get_hx200_json.status_code == requests.codes.ok:
+            print("GET HX200 INFO SUCCESS!!")
+            read_url_data=get_hx200_json.text
+            json_type_data=json.loads(read_url_data)
+            #hx200_info_lan1=json_type_data["lan1"]
+            #hx200_info_lan2=json_type_data["lan2"]
+            hx200_info_mng_ip=json_type_data["mng_ip"]
+            print(f"mng_ip={hx200_info_mng_ip}")
+            #url1="http://"+hx200_info_mng_ip+"/cgi/execAdvCom.bin?Command=194&PrintMsg=Info%20Server"
+            #url2="http://"+hx200_info_mng_ip+"/stats/summary/summary.html"
+        else:
+            print("GET HX200 INFO FAIL..")
+            hx200_info_mng_ip="ERROR!!"
+            #url1=""
+            #url2=""
+        return hx200_info_mng_ip
+
+
+
     def GetHx200_info(lan2ip,vessel,esn,beam,videosoft_online_status):
         #print("-----------------------------------------------")
         online_status=cmd.Cmd(lan2ip)
         #print(f"vessel : {vessel}")
         if online_status==1:
             try:
+                current_path=os.getcwd()
+                today_date=str(datetime.datetime.today().strftime('%Y-%m-%d'))
+                file_path=str(current_path)+"\\"+today_date
+                vessel_log_path=file_path+"\\"+str(vessel)+".txt"
+                if not os.path.isdir(file_path):
+                    os.mkdir(file_path)
+                else:
+                    open_log_data=open(vessel_log_path,"a")
+
+                get_mng_ip_url_fromAPI=mng_ip.get_mng_ip(esn)
+                real_mng_ip=hx200.get_mng_ip_function(get_mng_ip_url_fromAPI)
                 print(f"vessel : {vessel} online!!!!")
-                hx200_gps_url=hx200_url.hx200_gps_url(lan2ip)
-                hx200_sqf_url=hx200_url.hx200_spf_url(lan2ip)
+                hx200_gps_url=hx200_url.hx200_gps_url(real_mng_ip)
+                hx200_sqf_url=hx200_url.hx200_spf_url(real_mng_ip)
                 #headers={
                 #    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
                 #    }
                 print(f"---------------------{hx200_gps_url}")
                 print(f"---------------------{hx200_sqf_url}")
-                gps=requests.get(hx200_gps_url,timeout=(60,60))
+                gps=requests.get(hx200_gps_url,timeout=(60,60),verify=False)
                 gps.close()
                 time.sleep(1)
-                sqf=requests.get(hx200_sqf_url,timeout=(60,60))
+                sqf=requests.get(hx200_sqf_url,timeout=(60,60),verify=False)
                 sqf.close()
                 time.sleep(1)
                 if(gps.status_code==requests.codes.ok):
@@ -295,7 +326,10 @@ class hx200:
                     #print("HX200 SQF connection lost")
                     sql_sqf="0"
                     sql_car="000.0:0:00000"
-                time_current=datetime.datetime.utcnow()
+                if "AU" in beam:
+                    time_current=datetime.datetime.utcnow()+datetime.timedelta(hours=2)
+                else:
+                    time_current=datetime.datetime.utcnow()
                 time_current_str=str(time_current)
                 time_current_spl=time_current_str.split(".")
                 time_current_clear=str(time_current_spl[0])
@@ -305,9 +339,9 @@ class hx200:
                     sat_lat="0"
                     sat_lon=car_spl[0]
                     satellite_counter=satellite_count(gps_lat,gps_lon,sat_lat,sat_lon)
-                    satellite_EL=satellite_counter.satellite_el()
-                    satellite_AZ=satellite_counter.satellite_AZ()
-                    satellite_PA=satellite_counter.satellite_PA()
+                    satellite_EL=str(satellite_counter.satellite_el())
+                    satellite_AZ=str(satellite_counter.satellite_AZ())
+                    satellite_PA=str(satellite_counter.satellite_PA())
                 else:
                     satellite_EL="0.0"
                     satellite_AZ="0.0"
@@ -319,7 +353,38 @@ class hx200:
 
                 
                 print(f"{vessel},{esn},{sql_sqf},{gps_lat},{gps_lon},{beam},{sql_car},{time_current_final},{lan2ip},{videosoft_online_status},{satellite_EL},{satellite_AZ},{satellite_PA}")
-                #post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current,'lan2_ip':lan2ip,'CCTV_Active':videosoft_online_status})
+                log_data=[
+                    str(vessel)+",",
+                    str(esn)+",",
+                    str(sql_sqf)+",",
+                    str(gps_lat)+",",
+                    str(gps_lon)+",",
+                    str(beam)+",",
+                    str(sql_car)+",",
+                    str(time_current_final)+",",
+                    str(lan2ip)+",",
+                    str(videosoft_online_status)+",",
+                    str(satellite_EL)+",",
+                    str(satellite_AZ)+",",
+                    str(satellite_PA)+"\n",
+                    ]
+                error_log_data=[
+                    "Data ERROR!!!------",
+                    str(time_current_final)+"\n",
+                    ]
+                try:
+                    print("POST")
+                    post_reback=requests.post('http://vesselstatus.eastasia.cloudapp.azure.com/ku_result.ashx', data = {'ship_name':vessel,'esn':esn,'sqf':sql_sqf,'gps_lat':gps_lat,'gps_lon':gps_lon,'beam':beam,'carrierInfo':sql_car,'time':time_current_final,'lan2_ip':lan2ip,'CCTV_Active':videosoft_online_status,'AZ':satellite_AZ,'EL':satellite_EL,'PA':satellite_PA})
+                    #open_log=open("log.txt","a")
+                    open_log_data.writelines(log_data)
+                    open_log_data.close()
+                    print("POST done..")
+                except Exception as e:
+                    print("POST ERROR!!!!")
+                    print(e)
+                    #open_log=open("log.txt","a")
+                    open_log_data.writelines(error_log_data)
+                    open_log_data.close()
                 #time_current=str(time_current)
                 #server = 'vesselstatusdb.database.windows.net' 
                 #database = 'VesselStatusDB' 
