@@ -8,6 +8,9 @@ import urllib.request as req
 import json
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
 import threading
 import requests
 import os
@@ -328,6 +331,8 @@ class hx200:
                     sql_car="000.0:0:00000"
                 if "AU" in beam:
                     time_current=datetime.datetime.utcnow()+datetime.timedelta(hours=2)
+                elif "JP" in beam:
+                    time_current=datetime.datetime.utcnow()+datetime.timedelta(hours=-8)
                 else:
                     time_current=datetime.datetime.utcnow()
                 time_current_str=str(time_current)
@@ -439,3 +444,26 @@ class videosoft:
                 video_active="No data"
                 #print(f"the {name_read} CCTV_Active is : {video_active}")
         return video_active
+
+
+class mail:
+    def send_mail(noc):
+        receivers=["andy89345@gmail.com, andy@lunghwa.com.tw"]
+        content = MIMEMultipart() 
+        title=str(noc)+" "+"Monitor_system_2.0"+" "+"shutdown"
+        content["subject"] = title 
+        content["from"] = "info@lhsat.com" 
+        content["to"] = ", ".join(receivers) 
+        content_a="Please restart now!! "
+    
+        content.attach(MIMEText(content_a))
+
+        with smtplib.SMTP(host="smtp.hibox.biz", port="587") as smtp: 
+            try:
+                smtp.ehlo() 
+                smtp.starttls()  
+                smtp.login("info@lhsat.com", "Lunghwa123")
+                smtp.send_message(content) 
+                print("Complete!")
+            except Exception as e:
+                print("Error message: ", e)
